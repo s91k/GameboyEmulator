@@ -107,11 +107,12 @@ namespace GameboyEmulator
 
             // inc r8	0	0	Operand (r8)	1	0	0
             // dec r8	0	0	Operand (r8)	1	0	1
-
             // ld r8, imm8	0	0	Dest (r8)	1	1	0
             for (byte b = 0; b < 8; b++)
             {
                 byte r8 = b;
+                opCodes.Add((byte)(0b_00000100 | (r8 << 3)), new OpCode { Action = () => OpIncR8(r8), Cycles = 1 });
+                opCodes.Add((byte)(0b_00000101 | (r8 << 3)), new OpCode { Action = () => OpDecR8(r8), Cycles = 1 });
                 opCodes.Add((byte)(0b_00000110 | (r8 << 3)), new OpCode { Action = () => OpLdR8Imm8(r8), Cycles = 2 });
             }
 
@@ -341,10 +342,32 @@ namespace GameboyEmulator
             ushort r16Value = GetR16(r16);
 
             SubtractionFlag = false;
-            HalfCarryFlag = (r16Value & 0b_0000000011111111) + L > Byte.MaxValue;
+            HalfCarryFlag = (r16Value & 0b_0000111111111111) + (HL & 0b_0000111111111111) > 0b_0000111111111111;
             CarryFlag = r16Value + HL > 0xFFFF;
 
             HL = (ushort)(r16Value + HL);
+        }
+
+        private void OpIncR8(byte r8)
+        {
+            byte r8Value = GetR8(r8);
+
+            ZeroFlag = (r8Value + 1) == 0;
+            SubtractionFlag = false;
+            HalfCarryFlag = (r8Value & 0b_00001111) == 0b_00001111;
+
+            SetR8(r8, (byte)(r8Value + 1));
+        }
+
+        private void OpDecR8(byte r8)
+        {
+            byte r8Value = GetR8(r8);
+
+            ZeroFlag = (r8Value - 1) == 0;
+            SubtractionFlag = true;
+            HalfCarryFlag = (r8Value & 0b_00001111) == 0;
+
+            SetR8(r8, (byte)(r8Value - 1));
         }
 
         private void OpAdd(byte r8) => A += r8;

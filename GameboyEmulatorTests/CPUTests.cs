@@ -180,11 +180,11 @@ namespace GameboyEmulatorTests
 
             memory[0] = 0b_00000001;    // ld r16[0] imm16
             memory[1] = 0xFF;
-            memory[2] = 0x00;
+            memory[2] = 0x0F;
 
             memory[3] = 0b_00100001;    // ld r16[2] imm16
             memory[4] = 0xFF;
-            memory[5] = 0x00;
+            memory[5] = 0x0F;
 
             memory[6] = 0b_00001001;    // add hl r16[0]
 
@@ -203,11 +203,11 @@ namespace GameboyEmulatorTests
 
             memory[0] = 0b_00000001;    // ld r16[0] imm16
             memory[1] = 0x00;
-            memory[2] = 0xFF;
+            memory[2] = 0xF0;
 
             memory[3] = 0b_00100001;    // ld r16[2] imm16
             memory[4] = 0x00;
-            memory[5] = 0xFF;
+            memory[5] = 0xF0;
 
             memory[6] = 0b_00001001;    // add hl r16[0]
 
@@ -217,6 +217,42 @@ namespace GameboyEmulatorTests
 
             Assert.That(cpu.CarryFlag, Is.True);
             Assert.That(cpu.HalfCarryFlag, Is.False);
+        }
+
+        [Test]
+        public void TestIncH8()
+        {
+            var memory = new byte[2];
+
+            memory[0] = 0b_00000100;    // inc r8[0]
+            memory[1] = 0b_00000100;    // inc r8[0]
+
+            CPU cpu = new CPU(memory);
+
+            cpu.Run(2);
+
+            Assert.That(cpu.B, Is.EqualTo(2));
+            Assert.That(cpu.ZeroFlag, Is.False);
+            Assert.That(cpu.HalfCarryFlag, Is.False);
+            Assert.That(cpu.SubtractionFlag, Is.False);
+        }
+
+        [Test]
+        public void TestDecH8()
+        {
+            var memory = new byte[2];
+
+            memory[0] = 0b_00000101;    // inc r8[0]
+            memory[1] = 0b_00000101;    // inc r8[0]
+
+            CPU cpu = new CPU(memory);
+
+            cpu.Run(2);
+
+            Assert.That(cpu.B, Is.EqualTo(Byte.MaxValue - 1));
+            Assert.That(cpu.ZeroFlag, Is.False);
+            Assert.That(cpu.HalfCarryFlag, Is.False);
+            Assert.That(cpu.SubtractionFlag, Is.True);
         }
 
         [Test]
