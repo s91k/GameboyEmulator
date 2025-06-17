@@ -4,22 +4,27 @@ namespace GameboyEmulatorTests
 {
     public class CPUTests
     {
+        CPU cpu;
+        Memory memory;
+
         [SetUp]
         public void Setup()
         {
-            
+            memory = new Memory();
+            cpu = new CPU(memory);
         }
 
         [Test]
         public void TestNOP()
         {
-            var memory = new byte[1];
+            memory.Clear();
 
-            memory[0] = 0b_00000000;    // nop
+            memory.SetMemory([
+                0b_00000000,    // nop
+                0b_01110110     // halt
+            ]);
 
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(1);
+            cpu.Run();
 
             Assert.Pass();
         }
@@ -27,100 +32,83 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestLdR8Imm8()
         {
-            var memory = new byte[4];
+            memory.Clear();
 
-            memory[0] = 0b_00000110;    // ld r8[0] imm8
-            memory[1] = 0b_01010101;
+            memory.SetMemory([
+                0b_00000110, 0b_01010101,   // ld r8[0] imm8
+                0b_00111110, 0b_10101010,   // ld r8[7] imm8
+                0b_01110110                 // halt
+            ]);
 
-            memory[2] = 0b_00111110;    // ld r8[7] imm8
-            memory[3] = 0b_10101010;
+            cpu.Run();
 
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(4);
-
-            Assert.That(memory[1], Is.EqualTo(cpu.B));
-            Assert.That(memory[3], Is.EqualTo(cpu.A));
+            Assert.That(cpu.B, Is.EqualTo(0b_01010101));
+            Assert.That(cpu.A, Is.EqualTo(0b_10101010));
         }
 
         [Test]
         public void TestLdR8R8()
         {
-            var memory = new byte[3];
+            memory.Clear();
 
-            memory[0] = 0b_00000110;    // ld r8[0] imm8
-            memory[1] = 0b_01010101;
+            memory.SetMemory([
+                0b_00000110, 0x12,  // ld r8[0] imm8
+                0b_01111000,        // ld r8[7] r8[0]
+                0b_01110110         // halt
+            ]);
 
-            memory[2] = 0b_01111000;    // ld r8[7] r8[0]
+            cpu.Run();
 
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(3);
-
-            Assert.That(memory[1], Is.EqualTo(cpu.A));
+            Assert.That(cpu.A, Is.EqualTo(0x12));
         }
 
         [Test]
         public void TestLdR16Imm16()
         {
-            var memory = new byte[6];
+            memory.Clear();
 
-            memory[0] = 0b_00000001;    // ld r16[0] imm16
-            memory[1] = 0b_01010101;
-            memory[2] = 0b_10101010;
+            memory.SetMemory([
+                0b_00000001, 0b_01010101, 0b_10101010,  // ld r16[0] imm16
+                0b_00010001, 0b_11110000, 0b_00001111,  // ld r16[1] imm16
+                0b_01110110                             // halt
+            ]);
 
-            memory[3] = 0b_00010001;    // ld r16[1] imm16
-            memory[4] = 0b_11110000;
-            memory[5] = 0b_00001111;
+            cpu.Run();
 
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(6);
-
-            Assert.That(cpu.BC, Is.EqualTo(CPU.BytesToUShort(memory[2], memory[1])));
-            Assert.That(cpu.DE, Is.EqualTo(CPU.BytesToUShort(memory[5], memory[4])));
+            Assert.That(cpu.BC, Is.EqualTo(CPU.BytesToUShort(0b_10101010, 0b_01010101)));
+            Assert.That(cpu.DE, Is.EqualTo(CPU.BytesToUShort(0b_00001111, 0b_11110000)));
         }
 
         [Test]
         public void TestLdR16memA()
         {
-            var memory = new byte[7];
+            memory.Clear();
 
-            memory[0] = 0b_00111110;    // ld r8[7] imm8
-            memory[1] = 0b_10101010;
+            memory.SetMemory([
+                0b_00111110, 0b_10101010,               // ld r8[7] imm8
+                0b_00000001, 0b_00000110, 0b_00000000,  // ld r16[0] imm16
+                0b_00000010,                            // ld [r16mem][0], a
+                0b_01110110                             // halt
+            ]);
 
-            memory[2] = 0b_00000001;    // ld r16[0] imm16
-            memory[3] = 0b_00000110;
-            memory[4] = 0b_00000000;
+            cpu.Run();
 
-            memory[5] = 0b_00000010;    // ld [r16mem][0], a
-
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(6);
-
-            Assert.That(memory[6], Is.EqualTo(0b_10101010));
+            Assert.That(memory.GetRawMemory()[6], Is.EqualTo(0b_10101010));
         }
 
         [Test]
         public void TestLdAR16mem()
         {
-            var memory = new byte[7];
+            memory.Clear();
 
-            memory[0] = 0b_00000000;    // nop
-            memory[1] = 0b_00000000;    // nop
+            memory.SetMemory([
+                0b_00000001, 0b_00000101, 0b_00000000,  // ld r16[0] imm16
+                0b_00001010,                            // ld [r16mem][0], a
+                0b_01110110,                            // halt
+                0b_10101010,
+            ]);
 
-            memory[2] = 0b_00000001;    // ld r16[0] imm16
-            memory[3] = 0b_00000110;
-            memory[4] = 0b_00000000;
-
-            memory[5] = 0b_00001010;    // ld [r16mem][0], a
-
-            memory[6] = 0b_10101010;
-
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(6);
+            cpu.Run();
 
             Assert.That(cpu.A, Is.EqualTo(0b_10101010));
         }
@@ -128,22 +116,17 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestIncR16AndDecR16()
         {
-            var memory = new byte[8];
+            memory.Clear();
 
-            memory[0] = 0b_00000001;    // ld r16[0] imm16
-            memory[1] = 0x02;
-            memory[2] = 0x00;
+            memory.SetMemory([
+                0b_00000001, 0x02, 0x00,    // ld r16[0] imm16
+                0b_00010001, 0x02, 0x00,    // ld r16[1] imm16
+                0b_00000011,                // inc r16[0]
+                0b_00011011,                // dec r16[1]
+                0b_01110110                 // halt
+            ]);
 
-            memory[3] = 0b_00010001;    // ld r16[1] imm16
-            memory[4] = 0x02;
-            memory[5] = 0x00;
-
-            memory[6] = 0b_00000011;    // inc r16[0]
-            memory[7] = 0b_00011011;    // dec r16[1]
-
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(8);
+            cpu.Run();
 
             Assert.That(cpu.BC, Is.EqualTo(0x03));
             Assert.That(cpu.DE, Is.EqualTo(0x01));
@@ -152,21 +135,16 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestAddHLR16()
         {
-            var memory = new byte[7];
+            memory.Clear();
 
-            memory[0] = 0b_00000001;    // ld r16[0] imm16
-            memory[1] = 0x03;
-            memory[2] = 0x00;
+            memory.SetMemory([
+                0b_00000001, 0x03, 0x00,    // ld r16[0] imm16
+                0b_00100001, 0x02, 0x00,    // ld r16[2] imm16
+                0b_00001001,                // add hl r16[0]
+                0b_01110110                 // halt
+            ]);
 
-            memory[3] = 0b_00100001;    // ld r16[2] imm16
-            memory[4] = 0x02;
-            memory[5] = 0x00;
-
-            memory[6] = 0b_00001001;    // add hl r16[0]
-
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(7);
+            cpu.Run();
 
             Assert.That(cpu.HL, Is.EqualTo(0x05));
             Assert.That(cpu.CarryFlag, Is.False);
@@ -176,21 +154,16 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestAddHLR16HalfCarry()
         {
-            var memory = new byte[7];
+            memory.Clear();
 
-            memory[0] = 0b_00000001;    // ld r16[0] imm16
-            memory[1] = 0xFF;
-            memory[2] = 0x0F;
+            memory.SetMemory([
+                0b_00000001, 0xFF, 0x0F,    // ld r16[0] imm16
+                0b_00100001, 0xFF, 0x0F,    // ld r16[2] imm16
+                0b_00001001,                // add hl r16[0]
+                0b_01110110                 // halt
+            ]);
 
-            memory[3] = 0b_00100001;    // ld r16[2] imm16
-            memory[4] = 0xFF;
-            memory[5] = 0x0F;
-
-            memory[6] = 0b_00001001;    // add hl r16[0]
-
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(7);
+            cpu.Run();
 
             Assert.That(cpu.CarryFlag, Is.False);
             Assert.That(cpu.HalfCarryFlag, Is.True);
@@ -199,21 +172,16 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestAddHLR16Carry()
         {
-            var memory = new byte[7];
+            memory.Clear();
 
-            memory[0] = 0b_00000001;    // ld r16[0] imm16
-            memory[1] = 0x00;
-            memory[2] = 0xF0;
+            memory.SetMemory([
+                0b_00000001, 0x00, 0xF0,    // ld r16[0] imm16
+                0b_00100001, 0x00, 0xF0,    // ld r16[2] imm16
+                0b_00001001,                // add hl r16[0]
+                0b_01110110                 // halt
+            ]);
 
-            memory[3] = 0b_00100001;    // ld r16[2] imm16
-            memory[4] = 0x00;
-            memory[5] = 0xF0;
-
-            memory[6] = 0b_00001001;    // add hl r16[0]
-
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(7);
+            cpu.Run();
 
             Assert.That(cpu.CarryFlag, Is.True);
             Assert.That(cpu.HalfCarryFlag, Is.False);
@@ -222,14 +190,15 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestIncH8()
         {
-            var memory = new byte[2];
+            memory.Clear();
 
-            memory[0] = 0b_00000100;    // inc r8[0]
-            memory[1] = 0b_00000100;    // inc r8[0]
+            memory.SetMemory([
+                0b_00000100,    // inc r8[0]
+                0b_00000100,    // inc r8[0]
+                0b_01110110     // halt
+            ]);
 
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(2);
+            cpu.Run();
 
             Assert.That(cpu.B, Is.EqualTo(2));
             Assert.That(cpu.ZeroFlag, Is.False);
@@ -240,14 +209,15 @@ namespace GameboyEmulatorTests
         [Test]
         public void TestDecH8()
         {
-            var memory = new byte[2];
+            memory.Clear();
 
-            memory[0] = 0b_00000101;    // inc r8[0]
-            memory[1] = 0b_00000101;    // inc r8[0]
+            memory.SetMemory([
+                0b_00000101,    // dec r8[0]
+                0b_00000101,    // dec r8[0]
+                0b_01110110     // halt
+            ]);
 
-            CPU cpu = new CPU(memory);
-
-            cpu.Run(2);
+            cpu.Run();
 
             Assert.That(cpu.B, Is.EqualTo(Byte.MaxValue - 1));
             Assert.That(cpu.ZeroFlag, Is.False);

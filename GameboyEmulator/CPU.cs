@@ -70,12 +70,14 @@ namespace GameboyEmulator
 
         byte remainingInstructionCycles;
 
-        // Memory
-        private byte[] memory; /* = new byte[8192]; */
+        bool isHalted;
 
-        public CPU(byte[] memory)
+        // Memory
+        private byte[] memory;
+
+        public CPU(Memory memory)
         {
-            this.memory = memory;
+            this.memory = memory.GetRawMemory();
 
             // nop	0	0	0	0	0	0	0	0
             opCodes.Add(0b_00000000, new OpCode { Action = OpNop, Cycles = 1 });
@@ -146,6 +148,7 @@ namespace GameboyEmulator
             }
 
             // halt	0	1	1	1	0	1	1	0
+            opCodes.Add(0b_01110110, new OpCode { Action = OpHalt, Cycles = 1 });
 
             // add a, r8	1	0	0	0	0	Operand (r8)
             // adc a, r8	1	0	0	0	1	Operand (r8)
@@ -208,9 +211,11 @@ namespace GameboyEmulator
             // set b3, r8	1	1	Bit index (b3)	Operand (r8)
         }
 
-        public void Run(ushort programLength)
+        public void Run()
         {
-            while(programCounter < programLength)
+            isHalted = false;
+
+            while(!isHalted && programCounter < memory.Length)
             {
                 if (remainingInstructionCycles > 0)
                 {
@@ -369,6 +374,8 @@ namespace GameboyEmulator
 
             SetR8(r8, (byte)(r8Value - 1));
         }
+
+        private void OpHalt() => isHalted = true;
 
         private void OpAdd(byte r8) => A += r8;
     }

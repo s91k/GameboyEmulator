@@ -14,15 +14,10 @@ namespace GameboyEmulator
 
         static void Main(string[] args)
         {
-            var memory = new byte[3];
-
-            memory[0] = 0b_00000000;
-            memory[1] = 0b_00000000;
-            memory[2] = 0b_00000000;
-
+            Memory memory = new Memory();
             CPU cpu = new CPU(memory);
 
-            cpu.Run(3);
+            cpu.Run();
 
             /*SDL.Init(SDL.InitFlags.Video);
 
