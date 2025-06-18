@@ -226,6 +226,46 @@ namespace GameboyEmulatorTests
         }
 
         [Test]
+        public void TestJrImm8()
+        {
+            memory.Clear();
+
+            memory.SetMemory([
+                0b_00000100,                    // inc r8[0]
+                0b_00011000, 0xFF / 2 + 0x03,   // jr imm8[3]
+                0b_00000100,                    // inc r8[0]
+                0b_00000100,                    // inc r8[0]
+                0b_00000100,                    // inc r8[0]
+                0b_01110110                     // halt
+            ]);
+
+            cpu.Run();
+
+            Assert.That(cpu.B, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TestJrCondImm8()
+        {
+            memory.Clear();
+
+            // Program that loops until B is zero, each iteration increases C by two
+            memory.SetMemory([
+                0b_00000110, 0x4,               // ld r8[0] imm8[4]
+                0b_00001100,                    // inc r8[1]
+                0b_00001100,                    // inc r8[1]
+                0b_00000101,                    // dec r8[0]
+                0b_00100000, 0xFF / 2 - 0x05,   // jr cond[nz] imm8[1]
+                0b_01110110                     // halt
+            ]);
+
+            cpu.Run();
+
+            Assert.That(cpu.B, Is.Zero);
+            Assert.That(cpu.C, Is.EqualTo(8));
+        }
+
+        [Test]
         public void TestBytesToUShort()
         {
             Assert.That(CPU.BytesToUShort(0b_10000000, 0b_00000001), Is.EqualTo(0b_1000000000000001));

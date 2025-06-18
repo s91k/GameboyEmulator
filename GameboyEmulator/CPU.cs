@@ -128,7 +128,14 @@ namespace GameboyEmulator
             // ccf	0	0	1	1	1	1	1	1
 
             // jr imm8	0	0	0	1	1	0	0	0
+            opCodes.Add(0b_00011000, new OpCode { Action = OpJrImm8, Cycles = 3 });
+
             // jr cond, imm8	0	0	1	Condition (cond)	0	0	0
+            for (byte i = 0; i < 4; i++)
+            {
+                byte cond = i;
+                opCodes.Add((byte)(0b_00100000 | (cond << 3)), new OpCode { Action = () => OpJrCondImm8(cond), Cycles = 3 });
+            }
 
             // stop	0	0	0	1	0	0	0	0 
 
@@ -226,8 +233,8 @@ namespace GameboyEmulator
 
                     if (opCodes.TryGetValue(instruction, out var instructionAction))
                     {
-                        instructionAction.Action.Invoke();
                         remainingInstructionCycles = instructionAction.Cycles--;
+                        instructionAction.Action.Invoke();
                     }
                     else
                     {
@@ -376,6 +383,24 @@ namespace GameboyEmulator
         }
 
         private void OpHalt() => isHalted = true;
+
+        private void OpJrImm8()
+        {
+            short offset = (short)(memory[programCounter++] - (Byte.MaxValue / 2));
+            programCounter = (ushort)(programCounter + offset);
+        }
+
+        private void OpJrCondImm8(byte cond)
+        {
+            if((cond == 0 && !ZeroFlag) || (cond == 1 && ZeroFlag) || (cond == 2 && !CarryFlag) || (cond == 3 && CarryFlag))
+            {
+                OpJrImm8();
+            } else
+            {
+                programCounter++;
+                remainingInstructionCycles--;
+            }
+        }
 
         private void OpAdd(byte r8) => A += r8;
     }
